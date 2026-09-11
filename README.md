@@ -202,9 +202,13 @@ If it still won't cooperate:
 nmcli device status
 nmcli device wifi list ifname wlan0
 nmcli device wifi connect "SSID_NAME" password "PASSWORD" ifname wlan0
-sudo systemctl restart NetworkManager
-sudo journalctl -u NetworkManager -b
+systemctl restart NetworkManager
+journalctl -u NetworkManager -b
 ```
+
+> **No `sudo` yet.** The minimal image may not ship `sudo` at all, and you're logged in as
+> root anyway — drop the `sudo` prefix from any command you copy in at this stage or you'll
+> get `command not found`. Install it later if you want it: `pacman -S --needed sudo`.
 
 ---
 
@@ -225,17 +229,20 @@ bash install-asahi-quattro --fresh
 reboot
 ```
 
+That final `reboot` is the one that brings up Hyprland. If you get a graphical Omarchy
+desktop, you're done — everything past this point is familiar ground.
+
 > **Check the channel number.** `asahi-quattro-channel-25` is the only line here that goes
 > stale. Confirm the latest at https://github.com/maralcbr/omarchy-pkgs/releases
 
 ### If mirrors are slow or failing
 
 ```bash
-sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
-sudo nano /etc/pacman.d/mirrorlist
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+nano /etc/pacman.d/mirrorlist
 # move a US mirror to the top:
 #   Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
-sudo pacman -Syyu
+pacman -Syyu
 ```
 
 ### Fallback route
