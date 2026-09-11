@@ -229,6 +229,12 @@ bash install-asahi-quattro --fresh
 reboot
 ```
 
+The packages fall into distinct categories that require separate fixes:1. The Core Blocking Issue: yayThe script fails immediately because it needs an AUR helper (yay) to try downloading the rest of the packages, but yay cannot be found via pacman. You must build yay from source manually so the script can proceed:bashsudo pacman -S --needed git base-devel
+git clone https://archlinux.org
+cd yay
+makepkg -si
+Use code with caution.
+
 That final `reboot` is the one that brings up Hyprland. If you get a graphical Omarchy
 desktop, you're done — everything past this point is familiar ground.
 
