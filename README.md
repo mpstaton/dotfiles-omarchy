@@ -166,7 +166,25 @@ Permissive Security on that volume only, reboots into Linux, and drops you at a
 
 ---
 
-## Step 3 — get networking up
+## Step 3 — log in
+
+Asahi Alarm drops you at a console login, not a shell. Defaults:
+
+| user | password |
+|---|---|
+| `root` | `root` |
+| `alarm` | `alarm` |
+
+Log in as **`root` / `root`**. Change both immediately:
+
+```bash
+passwd            # root
+passwd alarm
+```
+
+---
+
+## Step 4 — get networking up
 
 First thing at the root console:
 
@@ -190,7 +208,7 @@ sudo journalctl -u NetworkManager -b
 
 ---
 
-## Step 4 — install Omarchy
+## Step 5 — install Omarchy
 
 Primary route: **[maralcbr/omarchy-mx-mac](https://github.com/maralcbr/omarchy-mx-mac)** —
 targets Omarchy 4 "Quattro", GPG-signed installers, automated end to end.
