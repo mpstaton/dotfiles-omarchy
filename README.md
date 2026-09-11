@@ -14,7 +14,7 @@ session where these instructions were written.
 |---|---|
 | Model | MacBook Air 13" (`Mac14,2`, M2, 2022) |
 | RAM | 8 GB |
-| Internal disk | 251 GB — APFS container `disk0s2` = 245 GB, ~177 GB free |
+| Internal disk | 251 GB — after install: macOS 122.55 GB, Linux 122.55 GB |
 | macOS | 26.6.2 (Tahoe), build 25G83 |
 | FileVault | **On** |
 | Time Machine | none configured (machine set up fresh) |
@@ -74,11 +74,14 @@ curl https://asahi-alarm.org/installer-bootstrap.sh | sh
 Answer the prompts:
 
 1. **Admin password** — it needs this to touch partitions.
-2. **What to install** → **`Asahi Arch Minimal`**, or the **BTRFS minimal** variant.
-   The BTRFS one is worth it: snapshots make a bad `pacman -Syu` recoverable.
-   Do **not** pick a desktop flavor — Omarchy installs its own Hyprland stack.
-3. **Size** → **100 GB**. The installer automatically holds back 38 GB for macOS so
-   macOS upgrades keep working.
+2. **What to install** → option **`2: Asahi Alarm Minimal (BTRFS)`**.
+   BTRFS is worth it: snapshots make a bad `pacman -Syu` a rollback, not a reinstall.
+   Do **not** pick a Desktop flavor (3 or 4) — Omarchy installs its own Hyprland stack.
+   Do not pick 5 (UEFI only, no OS).
+   When asked for an **OS name**, this install used `Omarchy` — it's the label shown in
+   the boot picker, so short beats the long default.
+3. **Size** → this install used **122.55 GB** (an even split). The installer
+   automatically holds back 38 GB for macOS so macOS upgrades keep working.
 4. It shrinks the container and writes the stub + EFI + root partitions.
 
 ### If the resize fails with "encrypted and locked volumes"
@@ -102,21 +105,63 @@ container, then retry.
 
 ## Step 2 — first boot into Linux (the unfamiliar part)
 
-When the installer finishes it will tell you to:
+**This is the step with no automatic recovery if you get it wrong.** The installer prints
+the following verbatim before shutting down. Reproduced here because you cannot read it
+again once the machine powers off:
 
-1. **Shut down completely.** Not restart — shut down.
-2. **Press and hold the power button** until you see **"Loading startup options"**.
-   This is 1TR (One True Recovery). It is not the normal boot picker, and this step is
-   not optional — it's where the Mac blesses the new OS's boot policy.
-3. Select the **Asahi Linux** volume.
-4. Enter your **macOS admin credentials** when asked.
-5. Let it set **Permissive Security** on that volume.
+```
+When the system shuts down, follow these steps:
 
-It reboots into Linux and drops you at a **root console**.
+1. Wait 25 seconds for the system to fully shut down.
+2. Press and hold down the power button to power on the system.
+   * It is important that the system be fully powered off before this step,
+     and that you press and hold down the button once, not multiple times.
+     This is required to put the machine into the right mode.
+3. Release it once you see 'Loading startup options...' or a spinner.
+4. Wait for the volume list to appear.
+5. Choose 'Omarchy'.
+6. You will briefly see a 'macOS Recovery' dialog.
+   * If you are asked to 'Select a volume to recover',
+     then choose your normal macOS volume and click Next.
+     You may need to authenticate yourself with your macOS credentials.
+7. Once the 'Asahi Linux installer' screen appears, follow the prompts.
+
+If you end up in a bootloop or get a message telling you that macOS needs to
+be reinstalled, that means you didn't follow the steps above properly.
+Fully shut down your system without doing anything, and try again.
+If in trouble, hold down the power button to boot, select macOS, run
+this installer again, and choose the 'p' option to retry the process.
+
+Press enter to shut down the system.
+```
+
+### The three ways people break this
+
+1. **Not fully powered off.** Wait the full 25 seconds. A machine that isn't all the way
+   down won't enter 1TR.
+2. **Tapping the power button, or pressing it repeatedly.** One single press, held
+   continuously, until the spinner appears.
+3. **Treating step 6 as an error.** Seeing a "macOS Recovery" dialog is expected — it is
+   the stub's recoveryOS. If it asks you to select a volume to recover, pick your normal
+   **Macintosh HD** and authenticate.
+
+### If it bootloops or says macOS must be reinstalled
+
+**Do not reinstall anything.** That message means 1TR wasn't entered correctly, not that
+anything is damaged. Recovery:
+
+1. Fully shut down without touching anything else.
+2. Hold the power button to boot, select **macOS**.
+3. Re-run the installer: `curl https://asahi-alarm.org/installer-bootstrap.sh | sh`
+4. Choose the **`p`** option to retry the boot-policy step.
+
+Once the Asahi Linux installer screen appears and you follow its prompts, it sets
+Permissive Security on that volume only, reboots into Linux, and drops you at a
+**root console**.
 
 ### Booting between the two OSes from now on
 
-- **Hold the power button from a full shutdown** → startup options picker → choose macOS or Asahi.
+- **Hold the power button from a full shutdown** → startup options picker → macOS or Omarchy.
 - A normal restart boots straight into whichever is currently default.
 
 ---
