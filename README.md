@@ -228,9 +228,10 @@ Three things that are not obvious and will cost you an evening each:
 2. **Do not install `yay`, and do not build anything from the AUR.** Every package
    Omarchy needs is prebuilt for `aarch64` and published as a signed pacman repo at
    [maralcbr/omarchy-pkgs](https://github.com/maralcbr/omarchy-pkgs/releases) —
-   `aether`, `asdcontrol`, `cliamp`, `dotnet-runtime`, `omacut`, all of them. The
-   installer wires that repo into `pacman.conf`. A `target not found` list of 20+
-   package names means the repo isn't configured yet, **not** that you need an AUR helper.
+   `aether`, `asdcontrol`, `cliamp`, `dotnet-runtime`, `omacut`, `yay` itself, all of
+   them. **You must add that repo to `pacman.conf` yourself — the installer does not.**
+   A `target not found` list of 20+ package names means the repo isn't configured yet,
+   **not** that you need an AUR helper. See "Wire up the `[omarchy]` package repository".
 3. **`--fresh` must run as root. Updates must NOT run as root.** The script enforces both
    directions. Fresh install → root console. Every upgrade afterwards → your regular
    Omarchy user.
@@ -256,6 +257,111 @@ The channel number moves every few days. Check the latest tag matching
 `asahi-quattro-channel-NN` at
 https://github.com/maralcbr/omarchy-pkgs/releases and substitute it below.
 As of 2026-09-11 the current channel is **30**.
+
+### Wire up the `[omarchy]` package repository — the installer does NOT do this
+
+**This is the step that isn't in anyone's documentation, and without it the install fails
+partway through with a wall of `target not found`.**
+
+The installer downloads and verifies a six-package bundle, then runs
+`pacman -Syu` for ~150 more packages it expects to come from a signed `[omarchy]`
+repository. Nothing in `install-asahi-quattro` or `omarchy-install-asahi-fresh` ever
+*adds* that repository — both assume it is already in `/etc/pacman.conf`. On a stock
+Asahi Arch Minimal image it isn't.
+
+Check:
+
+```bash
+grep -A2 omarchy /etc/pacman.conf
+```
+
+Empty output means you need everything below.
+
+#### Resolving the right repository tag
+
+The repo tag is pinned per channel, so don't guess it. Three hops:
+
+```bash
+# 1. channel pointer -> release_tag
+curl -sL https://github.com/maralcbr/omarchy-pkgs/releases/download/asahi-quattro-channel-30/asahi-quattro-channel
+
+# 2. release descriptor -> package_source_commit
+curl -sL https://github.com/maralcbr/omarchy-pkgs/releases/download/asahi-quattro-aae25861/asahi-quattro-release
+
+# 3. the repo tag is asahi-packages-stable-<package_source_commit>
+```
+
+For **channel 30** (2026-09-11) that resolves to:
+
+| | |
+|---|---|
+| Release tag | `asahi-quattro-aae25861` |
+| Package source commit | `ca4b5ee320a55e8a40025ec2c13c63b0c8115ac7` |
+| Repo tag | `asahi-packages-stable-ca4b5ee320a55e8a40025ec2c13c63b0c8115ac7` |
+
+That release carries 138 assets — `omarchy.db`, plus every package prebuilt for aarch64:
+`yay-12.6.0-1-aarch64.pkg.tar.xz`, `obsidian-1.13.7-1`, `mise-2026.5.15-1`,
+`localsend-1.17.0-3`, `aether`, `asdcontrol`, `cliamp`, `dotnet-runtime`, `omacut`, and
+the rest. **Nothing compiles on the machine.**
+
+#### Import the signing key
+
+```bash
+cd /root
+curl -LO https://raw.githubusercontent.com/maralcbr/omarchy-pkgs/ca4b5ee320a55e8a40025ec2c13c63b0c8115ac7/keys/asahi-repository-signing.asc
+pacman-key --init
+pacman-key --add /root/asahi-repository-signing.asc
+pacman-key --finger C81AC3E2A99556F9B21D5FEA3DD49BC9F8360BDC
+```
+
+`--finger` is the checkpoint — it must print a key block before you go on. Substitute the
+fingerprint for the commit's own key if you're on a different channel; **type it
+carefully**, a single wrong character produces `the fingerprint of a specified key could
+not be determined`, which reads like a keyring failure rather than a typo.
+
+```bash
+pacman-key --lsign-key C81AC3E2A99556F9B21D5FEA3DD49BC9F8360BDC
+```
+
+##### If that fails with "third party key signatures using SHA1 are rejected"
+
+GnuPG 2.4+ rejects SHA-1 key self-signatures, and this key's self-signature is SHA-1.
+Relax it for the one operation, then put it back:
+
+```bash
+echo 'allow-weak-key-signatures' >> /etc/pacman.d/gnupg/gpg.conf
+pacman-key --lsign-key C81AC3E2A99556F9B21D5FEA3DD49BC9F8360BDC
+sed -i '/allow-weak-key-signatures/d' /etc/pacman.d/gnupg/gpg.conf
+```
+
+Chosen-prefix SHA-1 collisions have been practical since 2020, so the rejection isn't
+theater. Signing is a one-time act — don't leave the relaxation in place.
+
+#### Add the repository
+
+```bash
+t=asahi-packages-stable-ca4b5ee320a55e8a40025ec2c13c63b0c8115ac7
+printf '\n[omarchy]\nSigLevel = Required DatabaseOptional\nServer = https://github.com/maralcbr/omarchy-pkgs/releases/download/%s\n' "$t" >> /etc/pacman.conf
+rm -f /var/lib/pacman/sync/omarchy.db /var/lib/pacman/sync/omarchy.db.sig
+pacman -Sy
+```
+
+Verify before going further — all three must pass:
+
+```bash
+grep -A2 omarchy /etc/pacman.conf    # prints the three-line block
+pacman-conf --repo-list              # 'omarchy' is now a sixth entry
+pacman -Si yay                       # resolves with 'Repository : omarchy'
+```
+
+`pacman -Si yay` is the one that matters. Until it returns a record, the installer will
+fail the same way again.
+
+> **Last-resort fallback.** If the key will not import at all, replace
+> `SigLevel = Required DatabaseOptional` with `SigLevel = Optional TrustAll` in the
+> `[omarchy]` block and re-run `pacman -Sy`. This disables package signature verification
+> for that repository — strictly weaker than the SHA-1 workaround above, so try that
+> first.
 
 ### Install
 
@@ -293,7 +399,10 @@ That reboot is the one that brings up Hyprland.
 
 | Error | Cause | Fix |
 |---|---|---|
-| `target not found: [yay, aether, omacut, …]` | The signed Omarchy repo isn't in `pacman.conf` yet | Run the installer — it adds the repo. Do not install yay. |
+| `target not found: [yay, aether, omacut, …]` | `[omarchy]` is not in `pacman.conf`; the installer never adds it | Wire up the repo first — see that section. Do not install yay. |
+| `pacman -Si yay` → `package not found` after adding the repo | The `printf` appending the block never ran, or `pacman -Sy` failed | `grep -A2 omarchy /etc/pacman.conf` — empty means re-append the block |
+| `the fingerprint of a specified key could not be determined` | Mistyped fingerprint, or the key was never imported | Re-run `pacman-key --finger <fpr>`; check the `.asc` starts with `BEGIN PGP PUBLIC KEY BLOCK` |
+| `third party key signatures using SHA1 are rejected` | GnuPG 2.4+ rejects the key's SHA-1 self-signature | Temporarily add `allow-weak-key-signatures` to `/etc/pacman.d/gnupg/gpg.conf` |
 | `Run a fresh installation as root.` | `--fresh` was run as a normal user | Run it as root |
 | `Run an update as your regular Omarchy user, not root.` | Update path run as root | Run it as your Omarchy user |
 | `User already exists outside this release installation` | You pre-created the account | See "Clearing a pre-created user" below |
