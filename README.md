@@ -217,29 +217,109 @@ journalctl -u NetworkManager -b
 Primary route: **[maralcbr/omarchy-mx-mac](https://github.com/maralcbr/omarchy-mx-mac)** —
 targets Omarchy 4 "Quattro", GPG-signed installers, automated end to end.
 
-```bash
-pacman -Syu --needed curl gnupg linux-asahi-headers networkmanager iwd
+### Read this before you type anything
 
-release=https://github.com/maralcbr/omarchy-pkgs/releases/download/asahi-quattro-channel-25
-curl -fLO "$release/install-asahi-quattro"
-curl -fLO "$release/install-asahi-quattro.sig"
-curl -fLO https://raw.githubusercontent.com/maralcbr/omarchy-mx-mac/main/default/omarchy-release.gpg
+Three things that are not obvious and will cost you an evening each:
+
+1. **Do not pre-create your user.** The installer creates it (`useradd --create-home
+   --groups wheel`) and writes its own `/etc/sudoers.d/10-omarchy-wheel`. It **refuses**
+   any account it did not create — `User already exists outside this release
+   installation` or `The target user is not owned by this installation`.
+2. **Do not install `yay`, and do not build anything from the AUR.** Every package
+   Omarchy needs is prebuilt for `aarch64` and published as a signed pacman repo at
+   [maralcbr/omarchy-pkgs](https://github.com/maralcbr/omarchy-pkgs/releases) —
+   `aether`, `asdcontrol`, `cliamp`, `dotnet-runtime`, `omacut`, all of them. The
+   installer wires that repo into `pacman.conf`. A `target not found` list of 20+
+   package names means the repo isn't configured yet, **not** that you need an AUR helper.
+3. **`--fresh` must run as root. Updates must NOT run as root.** The script enforces both
+   directions. Fresh install → root console. Every upgrade afterwards → your regular
+   Omarchy user.
+
+### Preflight
+
+The installer aborts on any of these, so check first:
+
+```bash
+uname -m                    # must be aarch64
+pacman-conf --repo-list     # must list: asahi-alarm, core, extra, alarm, aur
+```
+
+```bash
+pacman -Syu --needed curl gnupg linux-asahi-headers networkmanager iwd grub
+```
+
+`linux-asahi`, `networkmanager`, `iwd`, and `grub` must all be installed or it refuses to start.
+
+### Find the current channel
+
+The channel number moves every few days. Check the latest tag matching
+`asahi-quattro-channel-NN` at
+https://github.com/maralcbr/omarchy-pkgs/releases and substitute it below.
+As of 2026-09-11 the current channel is **30**.
+
+### Install
+
+As **root**:
+
+```bash
+cd /root
+u=https://github.com/maralcbr/omarchy-pkgs/releases/download/asahi-quattro-channel-30
+curl -LO $u/install-asahi-quattro
+curl -LO $u/install-asahi-quattro.sig
+curl -LO https://raw.githubusercontent.com/maralcbr/omarchy-mx-mac/main/default/omarchy-release.gpg
 gpgv --keyring ./omarchy-release.gpg install-asahi-quattro.sig install-asahi-quattro
+```
+
+`gpgv` must print **`Good signature`**. Stop if it doesn't.
+
+> **Use `-LO`, not `-fLO`.** With `-f`, curl exits silently on a 404 and writes no file —
+> you get no error and no download, which looks exactly like the command having worked.
+
+```bash
 bash install-asahi-quattro --fresh
+```
+
+It prompts for `Omarchy username:` — give it a name that **does not exist yet**. It then
+prompts you to set that user's password. It also locks the stock `alarm` account and
+removes it from `wheel`; that's intended.
+
+```bash
 reboot
 ```
 
-The packages fall into distinct categories that require separate fixes:1. The Core Blocking Issue: yayThe script fails immediately because it needs an AUR helper (yay) to try downloading the rest of the packages, but yay cannot be found via pacman. You must build yay from source manually so the script can proceed:bashsudo pacman -S --needed git base-devel
-git clone https://archlinux.org
-cd yay
-makepkg -si
-Use code with caution.
+That reboot is the one that brings up Hyprland.
 
-That final `reboot` is the one that brings up Hyprland. If you get a graphical Omarchy
-desktop, you're done — everything past this point is familiar ground.
+### Troubleshooting
 
-> **Check the channel number.** `asahi-quattro-channel-25` is the only line here that goes
-> stale. Confirm the latest at https://github.com/maralcbr/omarchy-pkgs/releases
+| Error | Cause | Fix |
+|---|---|---|
+| `target not found: [yay, aether, omacut, …]` | The signed Omarchy repo isn't in `pacman.conf` yet | Run the installer — it adds the repo. Do not install yay. |
+| `Run a fresh installation as root.` | `--fresh` was run as a normal user | Run it as root |
+| `Run an update as your regular Omarchy user, not root.` | Update path run as root | Run it as your Omarchy user |
+| `User already exists outside this release installation` | You pre-created the account | See "Clearing a pre-created user" below |
+| `The target user is not owned by this installation` | Pre-created account **plus** a partial-install checkpoint | See below |
+| `Required repository 'aur' is not configured` | `pacman.conf` is missing a repo | Add it to `/etc/pacman.conf`, then re-run |
+| `mps is not in the sudoers file` | Only relevant if you pre-created a user — you shouldn't have | Let the installer create the user instead |
+| curl downloads nothing, no error | You used `-f` and the URL 404'd | Drop `-f`; check the channel number |
+
+#### Clearing a pre-created user
+
+As root. Replace `mps` with your username:
+
+```bash
+ps -u mps -o pid,args              # find live sessions
+kill -9 <pid>                      # close any '-bash' login shells for that user
+userdel -rf mps
+getent passwd mps                  # must print nothing
+rm -f /etc/sudoers.d/10-wheel      # if you hand-wrote one
+rm -rf /var/lib/omarchy/fresh-install
+ls /home                           # must not list the user
+```
+
+Then re-run `bash install-asahi-quattro --fresh`.
+
+`userdel` fails while that user has a running process. A leftover `su - <user>` shell on
+another virtual console (Ctrl+Alt+F2…F6) is the usual culprit.
 
 ### If mirrors are slow or failing
 
@@ -251,10 +331,13 @@ nano /etc/pacman.d/mirrorlist
 pacman -Syyu
 ```
 
-### Fallback route
+### Fallback route — a different installer with different rules
 
 **[omacom/omarchy-mac](https://github.com/omacom/omarchy-mac)** (source on Codeberg, lives
-under DHH's GitHub org, active Discord). Fully manual — more steps, more people to ask:
+under DHH's GitHub org, active Discord). Fully manual.
+
+> **The rules above do not apply to this route.** This one *does* expect you to create the
+> user and install `yay` yourself. Don't mix the two installers' steps.
 
 ```bash
 # locale
@@ -272,14 +355,18 @@ passwd <username>
 EDITOR=nano visudo             # uncomment: %wheel ALL=(ALL:ALL) ALL
 su - <username>
 
-# yay
-git clone https://aur.archlinux.org/yay.git && cd yay && makepkg -si
+# yay — note the AUR host; makepkg refuses to run as root, by design
+git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si
 
 # omarchy
 git clone https://codeberg.org/malik-na/omarchy-mac.git ~/.local/share/omarchy
 cd ~/.local/share/omarchy && bash install.sh
 # if mirrors fail: bash fix-mirrors.sh
 ```
+
+Arch Linux ARM builds packages as `.pkg.tar.xz`, not mainline Arch's `.pkg.tar.zst` — so
+if you need to install a built package by hand it's
+`pacman -U ~/yay-bin/*.pkg.tar.xz`.
 
 Discord: https://discord.gg/KNQRk7dMzy
 
