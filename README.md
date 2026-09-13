@@ -143,6 +143,54 @@ atuin sync
 
 ---
 
+## The keyboard: Fn, F1/F2, and the backlight
+
+The top row sends Mac media keys, not F1–F12. Omarchy's Mac installer writes
+`options hid_apple fnmode=1` to `/etc/modprobe.d/hid_apple.conf`, so it works like macOS:
+hold **Fn** for F1–F12.
+
+| Press | Does |
+|---|---|
+| **F1 / F2** | Screen dimmer / brighter (5% steps) |
+| **Alt + F1 / F2** | Screen dimmer / brighter (1% steps) |
+| **Shift + F1 / F2** | **Keyboard backlight** dimmer / brighter |
+| **Super + F10 / F11 / F12** (mute / volume down / volume up) | Screenshot window / region / display, with or without Fn |
+| **Super + Alt + F12** | Start / stop a screen recording |
+
+Macs have no keyboard-backlight keys, so the Mac fork puts the backlight on Shift plus the
+screen-brightness keys (`default/hypr/bindings/media.lua`).
+
+### The keyboard is backlit, even when it looks like it isn't
+
+systemd saves the backlight level at shutdown and restores it at boot, from
+`/var/lib/systemd/backlight/platform-led-controller:leds:kbd_backlight`. If the saved level
+is `0`, the keys come back dark on every boot and it looks like there's no backlight at all.
+Nothing is missing: press **Shift + F2**, or run
+
+```bash
+brightnessctl -d kbd_backlight set 40%
+```
+
+The next shutdown saves the new level.
+
+### F1–F12 without Fn
+
+Set `fnmode=2`. The catch: bare F1/F2 stop changing screen brightness, and the backlight moves
+to Shift + Fn + F1/F2. Try it for the current session:
+
+```bash
+echo 2 | sudo tee /sys/module/hid_apple/parameters/fnmode
+```
+
+To keep it, change `fnmode=1` to `fnmode=2` in `/etc/modprobe.d/hid_apple.conf` and rebuild the
+initramfs. Omarchy loads `hid_apple` from the initramfs, so the file alone isn't enough:
+
+```bash
+sudo mkinitcpio -P
+```
+
+---
+
 # Installing Omarchy on this MacBook Air
 
 Notes from installing Omarchy on this machine, alongside macOS.
