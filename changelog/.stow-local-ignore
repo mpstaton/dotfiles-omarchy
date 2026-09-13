@@ -1,0 +1,3 @@
+# changelog/ is documentation, not a Stow package: ignore everything so
+# `stow */` never links these files into $HOME.
+.*

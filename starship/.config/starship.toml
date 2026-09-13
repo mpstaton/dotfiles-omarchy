@@ -1,0 +1,153 @@
+# Port of oh-my-posh themes/my-tokyo.omp.json (the ACTIVE Mac theme) to starship,
+# carried over from nix-hypr-dotfiles/starship/.config/starship.toml.
+#
+# Departures from the nix-hypr-dotfiles version, for Omarchy on the MacBook Air M2:
+# the NixOS snowflake becomes the Arch logo, and the hardcoded "sys76@" machine
+# label is dropped so the prompt shows this machine's real hostname.
+#
+# Palette, per the theme's README:
+#   #7eb8da structure blue   #ffa5d8 pink (git, project, kubectl)
+#   #98bfad sage (path)      #be9ddf lavender (perf)
+#   #ffffff icons            #ffff00 yellow (cloud values, root)
+#
+# Glyphs are the exact codepoints lifted from the Mac theme, written as
+# \uXXXX escapes because literal private-use characters do not survive
+# every editor and copy-paste path. TOML decodes them at parse time.
+#   F108 computer   F303 arch (was F313 nixos, F8FF Apple)   EB99 user
+#   F073 calendar   F487 cube      F09B github    F044 pencil/unstaged
+#   F046 staged     EB4B stash     F115 folder    F252 hourglass
+#   E266 memory     F240 battery   F270 aws  F1A0 gcp  EBD8 az  F10F k8s
+#
+# Needs a Nerd Font in the terminal. Omarchy's Ghostty already uses
+# JetBrainsMono Nerd Font.
+#
+# Block 2 is git-only in practice, so its row break lives in custom.gitrow
+# rather than in the literal format string — outside a work tree the whole
+# row (newline included) disappears and the prompt collapses to two rows.
+#
+# One structural limit: oh-my-posh right-aligns block 4 as its own line.
+# starship's right_format renders at the right of the LAST prompt line only,
+# so the perf cluster sits opposite the `└─>` rather than on its own row.
+
+format = """
+[┏](#7eb8da)$hostname$username$time${custom.gitrow}$package$aws$gcloud$azure$kubernetes${custom.repo}$git_branch$git_status$git_state
+[┣](#7eb8da)$directory
+[└─](#7eb8da)$status$character"""
+
+right_format = "$cmd_duration$memory_usage$battery"
+
+add_newline = true
+
+# ── Block 1: session + timestamp ────────────────────────────────────
+[hostname]
+disabled = false
+ssh_only = false
+format = "[\\[](#7eb8da)[](#ffffff)[:](#7eb8da)[ ](#ffffff)[$hostname](#7eb8da)"
+
+[username]
+show_always = true
+format = "[:](#7eb8da)[ ](#ffffff)[$user](#7eb8da)[\\]](#7eb8da)"
+style_user = "#7eb8da"
+style_root = "#ffff00"
+
+[time]
+disabled = false
+time_format = "%Y%m%d@%H:%M:%S"
+format = "[\\[](#7eb8da)[ ](#ffffff)[$time](#7eb8da)[\\]](#7eb8da)"
+
+# ── Block 2: project, cloud, git ────────────────────────────────────
+[package]
+format = "[\\[](#ffa5d8)[ ](#ffffff)[$version](#ffa5d8)[\\]](#ffa5d8)"
+
+[aws]
+format = "[\\[](#7eb8da)[ ](#ffffff)[$profile(@$region)](#ffff00)[\\]](#7eb8da)"
+
+[gcloud]
+format = "[\\[](#7eb8da)[ ](#ffffff)[$project(::$account)](#ffff00)[\\]](#7eb8da)"
+
+[azure]
+format = "[\\[](#7eb8da)[ ](#ffffff)[Subscription: $subscription](#ffff00)[\\]](#7eb8da)"
+
+[kubernetes]
+disabled = false
+format = "[\\[](#ffa5d8)[ ](#ffffff)[$context(::$namespace)](#ffff00)[\\]](#ffa5d8)"
+
+# OMP uses {{ .UpstreamIcon }}, resolved per remote host. starship has no
+# equivalent, so the GitHub glyph is hardcoded.
+[git_branch]
+format = "[ ](#ffffff)[$branch](#ffa5d8)"
+symbol = ""
+
+[git_status]
+format = "([ $all_status$ahead_behind](#ffa5d8))[\\]](#ffa5d8)"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕⇡${ahead_count}⇣${behind_count}"
+up_to_date = "≡"
+modified = " ${count}"
+staged = "  ${count}"
+untracked = " ?${count}"
+deleted = " ✘${count}"
+stashed = "  ${count}"
+conflicted = " !${count}"
+
+[git_state]
+format = "[\\[$state( $progress_current/$progress_total)\\]](#ffa5d8)"
+
+# ── Block 3: path ───────────────────────────────────────────────────
+[directory]
+format = "[\\[](#7eb8da)[ ](#ffffff)[$path](#98bfad)[$read_only]($read_only_style)[\\]](#7eb8da)"
+truncation_length = 0
+truncate_to_repo = false
+read_only = " "
+read_only_style = "#f36943"
+
+# ── Block 4: perf cluster, right-aligned ────────────────────────────
+[cmd_duration]
+min_time = 0
+show_milliseconds = true
+format = "[\\[](#be9ddf)[ ](#ffffff)[$duration](#be9ddf)[\\]](#be9ddf)"
+
+[memory_usage]
+disabled = false
+threshold = -1
+format = "[\\[](#be9ddf)[ ](#ffffff)[RAM: $ram](#be9ddf)[\\]](#be9ddf)"
+
+[battery]
+format = "[\\[](#f36943)[$symbol](#ffffff)[$percentage]($style)[\\]](#f36943)"
+full_symbol = " "
+charging_symbol = " "
+discharging_symbol = " "
+
+[[battery.display]]
+threshold = 100
+style = "#f36943"
+
+# ── Block 5: prompt line ────────────────────────────────────────────
+[status]
+disabled = false
+format = "[\\[Error, check your command\\]](#ffa5d8) "
+map_symbol = false
+
+[character]
+success_symbol = "[>](#7eb8da)"
+error_symbol = "[>](#ffa5d8)"
+vicmd_symbol = "[<](#98bfad)"
+
+# Emits the newline and ┣ that open block 2. Gated on the work tree so that
+# outside a repo there is no empty ┣ row: block 1 runs straight into block 3.
+[custom.gitrow]
+when = "git rev-parse --is-inside-work-tree"
+command = "echo"
+format = "\n[┣](#7eb8da)"
+description = "block 2 row break, git repos only"
+
+# oh-my-posh shows the repo name ahead of the upstream icon. starship has no
+# repo module, so this custom one opens the git bracket group and git_branch
+# no longer does. Both are gated on being inside a work tree, so they appear
+# and disappear together.
+[custom.repo]
+when = "git rev-parse --is-inside-work-tree"
+command = "basename \"$(git rev-parse --show-toplevel)\""
+format = "[\\[](#ffa5d8)[$output ](#ffa5d8)"
+description = "repository name"

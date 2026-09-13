@@ -1,0 +1,17 @@
+# Timestamped backups made while editing configs (e.g. looknfeel.lua.bak.20260912-215646)
+*.bak.*
+
+# Secrets are sourced from ~/.secrets (see bash/.bashrc) and must never be committed,
+# even if one ends up inside the repo by mistake.
+.secrets
+**/.secrets
+
+# gh auth state — machine-local, and gains a plaintext oauth_token
+# on any host without a system keyring (e.g. headless Linux).
+# Matched at any depth, so it stays ignored inside gh/.config/gh/ too.
+**/gh/hosts.yml
+
+# Omarchy's live Neovim theme — a per-machine symlink into
+# ~/.local/state/omarchy/current/theme/neovim.lua. Each machine creates its own:
+#   ln -s ~/.local/state/omarchy/current/theme/neovim.lua nvim/.config/nvim/lua/plugins/theme.lua
+nvim/.config/nvim/lua/plugins/theme.lua

@@ -481,6 +481,84 @@ Discord: https://discord.gg/KNQRk7dMzy
 
 ---
 
+## Step 6 — install extra software
+
+Everything here is installed and working on this machine. All of it except Zen is a
+prebuilt aarch64 package from Arch Linux ARM's `extra` repo or the `[omarchy-aarch64]` repo,
+so nothing compiles.
+
+### Install
+
+```bash
+# dotfile symlink manager, editor, file manager, screen recorder
+sudo pacman -S --needed stow helix superfile obs-studio
+
+# Zen Browser: AUR zen-browser-bin repackages Zen's official aarch64 build.
+# Omarchy's installer also writes Zen's policies and wires up the default-browser menu.
+omarchy install browser zen
+
+# GitHub CLI comes from mise, not pacman
+mise use -g gh@latest
+```
+
+### Notes
+
+- **Helix** installs its command as `helix`, not `hx` (another package already owns `hx`).
+- **Superfile** runs as `spf`. The AUR `superfile` package is x86_64-only, so use `extra`.
+- **OBS Studio** is skipped by the Apple Silicon Omarchy installer, but plain `obs-studio`
+  from `[omarchy-aarch64]` installs in seconds. Don't use `yay` for it: the AUR variant
+  pulls `obs-studio-browser`, which compiles for ~3 hours and then fails on aarch64.
+  Encoding is software-only (x264), because Asahi has no video encoder yet.
+- **Zen** opens floating by default. `~/.config/hypr/hyprland.lua` tiles it with
+  `o.window({ tag = "firefox-based-browser" }, { tile = true })`.
+
+---
+
+## Step 7 — core cross-device services
+
+These are what make jumping between machines seamless: the same passwords and the same
+shell history everywhere. Set them up on every machine, right after Step 6.
+
+### Install
+
+```bash
+# 1Password desktop app (official arm64 build), 1password-cli, and the Chromium extension
+omarchy install service 1password
+
+# Atuin shell history (it bundles bash-preexec; the package is a harmless fallback)
+sudo pacman -S --needed atuin bash-preexec
+```
+
+### 1Password
+
+- The AUR `1password` package is x86_64-only. Omarchy's installer uses 1Password's official
+  arm64 tarball instead (installed to `/opt/1Password`), so it doesn't update through
+  pacman.
+- It also installs `1password-cli` (`op`) and adds the 1Password extension to Chromium.
+  Restart Chromium to load the extension.
+- Zen isn't covered: install the 1Password extension from Firefox Add-ons.
+- Sign in to your account in the app.
+
+### Atuin
+
+Omarchy doesn't set Atuin up. To sync history with other machines:
+
+1. Run `atuin login` (server is the default, `https://api.atuin.sh`).
+2. Enter the username and password.
+3. At *"enter key or leave blank to use existing key file"*, paste the 24-word key phrase
+   (get it with `atuin key` on a machine that already syncs). Don't leave it blank on a new
+   machine: that creates a fresh key that can't read the synced history.
+4. Run `atuin sync` to pull history.
+
+The key is saved to `~/.local/share/atuin/key`, never in this repo. Atuin takes over
+**Ctrl+R** because `~/.bashrc` runs `eval "$(atuin init bash)"` after Omarchy's rc.
+
+Every machine must use the same key. If `atuin sync` says *"Your local encryption key cannot
+decrypt the data on the server"*, this machine's key differs from the one that wrote the
+server records: get the right one with `atuin key` and run `atuin store rekey <key>`.
+
+---
+
 ## Hardware support on this exact model
 
 From the [Asahi M2 feature table](https://asahilinux.org/docs/platform/feature-support/m2/)
@@ -506,8 +584,8 @@ This is Arch ARM plus `linux-asahi`, which must stay in lockstep with Mesa and t
 firmware, plus a third-party Omarchy layer on top. Leaving it untouched for a month and
 then running `pacman -Syu` is the classic way to break it.
 
-- Update deliberately, not after long gaps.
-- If installed on BTRFS, snapshot before updating.
+ - Update deliberately, not after long gaps.
+ - If installed on BTRFS, snapshot before updating.
 
 ---
 
