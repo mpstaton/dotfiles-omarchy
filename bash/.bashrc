@@ -34,6 +34,11 @@ if command -v gh &> /dev/null; then
   GITHUB_API_TOKEN=$(gh auth token 2> /dev/null) && export GITHUB_API_TOKEN
 fi
 
+# direnv: loads per-project .envrc (e.g. `use flake` for Nix devshells)
+if command -v direnv &> /dev/null; then
+  eval "$(direnv hook bash)"
+fi
+
 # Atuin shell history (bundles bash-preexec). Loaded after Omarchy's rc so it
 # takes over Ctrl+R from fzf.
 if command -v atuin &> /dev/null; then

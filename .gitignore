@@ -15,3 +15,6 @@
 # ~/.local/state/omarchy/current/theme/neovim.lua. Each machine creates its own:
 #   ln -s ~/.local/state/omarchy/current/theme/neovim.lua nvim/.config/nvim/lua/plugins/theme.lua
 nvim/.config/nvim/lua/plugins/theme.lua
+
+# Git identity (name + email) — included by git/.config/git/config, kept out of the public repo.
+git/.config/git/user.local

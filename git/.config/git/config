@@ -32,3 +32,6 @@
 [credential "https://gist.github.com"]
 	helper = 
 	helper = !gh auth git-credential
+# Identity lives in user.local (gitignored) so the email stays out of this public repo.
+[include]
+	path = user.local

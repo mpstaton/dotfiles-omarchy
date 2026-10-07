@@ -18,6 +18,13 @@ Apple Silicon, see [Up and Running with Omarchy on Apple Silicon](https://github
 | `atuin` | `~/.config/atuin/config.toml` |
 | `helix` | `~/.config/helix/config.toml` |
 | `superfile` | `~/.config/superfile/` |
+| `zen` | `~/.config/zen/<profile>/user.js` |
+
+The `zen` package shrinks Zen's UI to 80% (`layout.css.devPixelsPerPx` 1.6) on this
+2560×1600 panel at Hyprland scale 2. Its folder is named after this machine's Zen profile
+(`hv7ltgcs.Default (release)`); on another machine, rename it to match the `Default=` line in
+`~/.config/zen/installs.ini` before stowing. Zen reads `user.js` only at startup, and closing
+a window doesn't quit it: check that `zen-bin` has actually exited before reopening.
 
 ## Setup
 
@@ -30,7 +37,13 @@ stow */
 ln -s ~/.local/state/omarchy/current/theme/neovim.lua nvim/.config/nvim/lua/plugins/theme.lua
 ```
 
-Secrets go in `~/.secrets`, which `.bashrc` loads and git ignores.
+Secrets go in `~/.secrets`, which `.bashrc` loads and git ignores. Git's name and email go in
+`git/.config/git/user.local` (also ignored), which the git config includes:
+
+```bash
+git config --file git/.config/git/user.local user.name "<name>"
+git config --file git/.config/git/user.local user.email "<email>"
+```
 
 ---
 
