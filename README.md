@@ -633,6 +633,115 @@ then running a full upgrade is the classic way to break it.
 
 ---
 
+## Troubleshooting: recovering from a broken update
+
+What got this machine back after an `omarchy-update` died partway (October 2026). Symptoms:
+the desktop came up with the wallpaper only, no top bar, and Cmd+Space dimmed the screen
+without showing the launcher.
+
+**Cmd+Enter opens a terminal** (Super is Cmd). If even that fails, Ctrl+Alt+F3 (maybe with
+Fn) gives a text login; Ctrl+Alt+F1/F2 goes back.
+
+### If it won't boot to the desktop
+
+The prompt that rejects `sudo`, `reboot`, etc. is **U-Boot**, reached by pressing a key during
+"Hit any key to stop autoboot". It is not Linux. Type `boot` to continue (`reset` restarts).
+
+At GRUB, press `e`, add `systemd.unit=multi-user.target` to the end of the `linux` line, and
+press Ctrl+X. That boots to a text login (`m2omarchy login:`) without starting the desktop.
+
+### 1. See what happened
+
+```bash
+tail -30 /var/log/pacman.log                         # where the update stopped
+journalctl -b -1 -p err --no-pager | tail -40        # errors from the last boot
+grep -E "\[ALPM\] removed" /var/log/pacman.log       # what the update removed
+```
+
+Ignore `wlan`/`wpa_supplicant` errors; they're normal on Asahi. Here the log ended at
+`pacman -Sy --noconfirm archlinuxarm-keyring`, so the upgrade never finished.
+
+### 2. Finish the upgrade
+
+```bash
+ping -c3 archlinux.org                       # no network? use nmtui or iwctl
+ls /var/lib/pacman/db.lck && sudo rm /var/lib/pacman/db.lck   # only if no pacman is running
+sudo pacman -Sy archlinuxarm-keyring asahi-alarm-keyring
+sudo pacman -Syu
+```
+
+Don't reach for `--overwrite` or `--force`.
+
+### 3. Rebuild the boot files
+
+```bash
+sudo mkinitcpio -P
+sudo update-m1n1
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+sudo reboot
+```
+
+Harmless noise from these:
+
+- `mkinitcpio`: "possibly missing firmware" for `xhci_pci` etc., "architecture aarch64 not
+  supported", `drm_privacy_screen_register`, "consolefont: no font found". What matters is
+  **"Image generation successful"**.
+- `grub-mkconfig`: "efibootmgr is missing". The Mac boots through U-Boot, not an EFI boot menu.
+
+### 4. Reinstall the bar and launcher
+
+Waybar, Walker and Elephant were gone. pacman's log had never recorded them, and the removed
+list held `go`, `rust`, `lld` and `yay-bin`: the omarchy-mac installer builds Walker (Rust)
+and Elephant (Go) from source, then removes the toolchain. There are no prebuilt aarch64
+packages, so reinstalling means building again.
+
+```bash
+sudo pacman -S waybar
+
+# yay, which the installer also removed
+sudo pacman -S --needed git base-devel       # "nothing to do" is fine
+cd /tmp
+git clone https://aur.archlinux.org/yay-bin.git
+cd yay-bin
+makepkg -si
+cd ~                                         # /tmp is RAM; don't build from there on 8 GB
+
+# Pulls in a lot of Python build deps; takes a while, keep the charger in
+yay -S walker elephant elephant-desktopapplications elephant-runner elephant-calc \
+  elephant-clipboard elephant-files elephant-menus elephant-providerlist \
+  elephant-symbols elephant-websearch
+```
+
+`elephant-desktopapplications` is the one that matters: without it the launcher opens empty.
+
+```bash
+pacman -Q waybar walker elephant elephant-desktopapplications   # check all four
+```
+
+### 5. Start them
+
+From a terminal inside the desktop, not the Ctrl+Alt+F3 console:
+
+```bash
+elephant service enable              # the AUR package ships no systemd unit; this writes one
+systemctl --user start elephant
+walker --gapplication-service &      # omarchy-restart-walker doesn't exist on omarchy-mac
+waybar &
+```
+
+Then Cmd+Space should open the launcher with your apps listed.
+
+### Next time
+
+Snapshot first, so a bad update is one command to undo:
+
+```bash
+sudo snapper -c root create -d "before update"
+omarchy snapshot restore             # or: sudo snapper -c root list; sudo snapper rollback <n>
+```
+
+---
+
 ## Uninstalling
 
 No automated uninstaller. From macOS, **after setting macOS as the default boot OS again**:
