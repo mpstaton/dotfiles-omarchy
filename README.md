@@ -631,6 +631,48 @@ then running a full upgrade is the classic way to break it.
  - Update deliberately, not after long gaps.
  - If installed on BTRFS, snapshot before updating.
 
+### Oct 2026: Qt 6.12 broke the shell (bar, launcher, menus all black)
+
+Qt 6.12 (installed 2026-10-12) adds a built-in QtQuick `Color` object that shadows Omarchy's
+own `Color` palette singleton (`qs.Commons`). Every shell surface (bar, Super+Space launcher,
+menus, tooltips, notifications, lock screen) reads its colors from that palette, so they all
+render black/invisible. The journal (`journalctl -b -t omarchy-shell`) fills with
+`Cannot read property 'border' of undefined` and `Unable to assign [undefined] to QColor`.
+
+- Upstream bug: [omacom/omarchy#14560](https://github.com/omacom/omarchy/issues/14560), fixed in [omacom/omarchy#14553](https://github.com/omacom/omarchy/pull/14553) (uses `Commons.Color`)
+- Mac fork tracking: [omacom/omarchy-mac#709](https://github.com/omacom/omarchy-mac/issues/709) (our workaround is posted there); fix PRs #710 / #723 pending
+- Note: both repos moved from `malik-na/` and `basecamp/` to the `omacom` org.
+
+**Local patch (applied 2026-10-15).** Renames the singleton to `ThemeColor` in the
+`~/.local/share/omarchy` checkout (55 files under `shell/`):
+
+```
+cd ~/.local/share/omarchy/shell && grep -rIl '\bColor\.[a-z]' . --include=*.qml --include=*.js | xargs sed -i -E 's/\bColor\.([a-z])/ThemeColor.\1/g; s/ThemeColor\.qml/Color.qml/g' && sed -i 's/^singleton Color 1.0/singleton ThemeColor 1.0/' Commons/qmldir && omarchy-restart-shell
+```
+
+**Updating while the patch is in place: don't run plain `omarchy-update`.** It does
+`git pull --ff-only` on the checkout, which either fails ("local changes would be
+overwritten") or pulls in new shell files that still use bare `Color` and render black.
+Run this one line instead. It reverts the patch, updates, then re-applies the patch only if
+the official fix hasn't landed:
+
+```
+cd ~/.local/share/omarchy && git checkout -- shell && omarchy-update && (grep -q "Commons.Color" shell/plugins/bar/Bar.qml && echo "Official fix is in, no patch needed" || (cd shell && grep -rIl '\bColor\.[a-z]' . --include=*.qml --include=*.js | xargs sed -i -E 's/\bColor\.([a-z])/ThemeColor.\1/g; s/ThemeColor\.qml/Color.qml/g' && sed -i 's/^singleton Color 1.0/singleton ThemeColor 1.0/' Commons/qmldir && omarchy-restart-shell && echo "Patch re-applied"))
+```
+
+Once it prints **"Official fix is in, no patch needed"**, plain `omarchy-update` is safe
+again and this subsection can be retired.
+
+**Undo the patch:**
+
+```
+cd ~/.local/share/omarchy && git checkout -- shell && omarchy-restart-shell
+```
+
+**Loose ends:** the `omarchy 4.0.3` package at `/usr/share/omarchy` is a second install (also
+has the bug); the session runs from the git checkout. SSH was opened for remote debugging;
+close it with `sudo ufw delete allow 22/tcp`.
+
 ---
 
 ## Troubleshooting: recovering from a broken update
