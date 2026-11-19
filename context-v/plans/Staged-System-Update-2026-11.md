@@ -117,7 +117,7 @@ sudo snapper -c root create -d "before staged update 2026-11-19" -p   # → 40
 Rollback: `omarchy snapshot restore`, or `sudo snapper rollback 40` and reboot.
 `omarchy-update` takes its own snapshot as well in Stage 3.
 
-### Stage 1: Mac hardware (keyrings + graphics)
+### Stage 1: Mac hardware (keyrings + graphics) ✅
 
 ```bash
 sudo pacman -Sy --needed archlinuxarm-keyring asahi-alarm-keyring
@@ -199,6 +199,7 @@ Append one line per event: date, stage, outcome. Newest last.
 - 2026-11-19: Surveyed state (230 repo, 3 AUR). Snapshot **#40** created. Stage 0 ✅
 - 2026-11-19: Plan written. Next: Stage 1
 - 2026-11-19: Keyrings already current. Dry runs: Stage 1 clean (3 pkgs). Stage 2 impossible on its own (openssl 4 soname bump). Folded into Stage 3. Nothing installed yet.
+- 2026-11-19: Stage 1 ✅ mesa, vulkan-asahi, vulkan-mesa-implicit-layers → 26.3.1-1. (A `!` pacman run in Claude Code cannot answer the Y/n prompt; it aborted harmlessly.) Next: Stage 3 (`omarchy-update`) in a real terminal.
 
 ## Follow-ups (after the update)
 
