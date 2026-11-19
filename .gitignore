@@ -18,3 +18,6 @@ nvim/.config/nvim/lua/plugins/theme.lua
 
 # Git identity (name + email) — included by git/.config/git/config, kept out of the public repo.
 git/.config/git/user.local
+
+# context-v scratch — never published
+context-v/extra/
