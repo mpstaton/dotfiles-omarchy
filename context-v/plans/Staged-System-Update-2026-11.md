@@ -12,7 +12,7 @@ authors:
   - mps
 augmented_with:
   - Claude Code on Claude Opus 5.5
-at_semantic_version: 0.0.0.1
+at_semantic_version: 0.0.1.0
 status: Implementing
 date_work_started: 2026-11-19
 site_uuid: 4339f862-adeb-444d-9a53-b1e7d7caf289
@@ -80,11 +80,17 @@ running, stop and follow the README's broken-update recovery section first.
 
 **Risk notes**
 
-- **openssl 4** is a major version. No AUR or foreign package links `libssl.so.3`
-  (checked with `ldd`), and repo packages are rebuilt against it together. Low risk, but
-  check that `curl`, `git` and `ssh` still work after Stage 2.
-- **Stages 1–2 update only part of the system**, which Arch doesn't support as a
-  long-lived state. Run Stages 1 → 3 in one sitting; don't stop for days in between.
+- **openssl 4 is a soname bump (`libssl.so.3` → `.so.4`), not a drop-in.** sudo, curl,
+  openssh, cryptsetup, libarchive, libgit2 and others are built against openssl 3, and the
+  new systemd needs openssl 4. A dry run on 2026-11-19 showed that **any** core-only
+  transaction fails: `installing openssl (4.1.0-1) breaks dependency 'libcrypto.so=3-64'
+  required by sudo`, and so on. The core system can only move together with the full
+  `-Syu`, so **Stage 2 is folded into Stage 3 this time.** The full upgrade (230 packages,
+  `--ignore hyprland`) resolves with no errors.
+- **AUR packages that depend on `openssl`:** `spotify` and `dotnet-runtime-9.0-bin`.
+  Both have pending AUR updates (Stage 4). Test them after the upgrade.
+- Stage 1 updates only part of the system, which Arch doesn't support as a long-lived
+  state. Run Stage 1 → 3 in one sitting.
 
 ### What changed in our Omarchy setup (why plain `omarchy-update` is OK now)
 
@@ -123,9 +129,13 @@ pacman may pull in newer `llvm-libs` / `libdrm` as dependencies. That's expected
 **Done check:** `pacman -Q mesa` shows `26.3.1`. Reboot is not required, but the new
 Mesa only applies to apps started afterwards.
 
-### Stage 2: Kernel and core system
+### Stage 2: Kernel and core system (⏭ folded into Stage 3 this round)
 
-No `linux-asahi`, `m1n1` or `uboot-asahi` update this time, so this is core userspace only.
+**Skip as a separate step this time.** See the openssl risk note: the new systemd needs
+openssl 4, and openssl 4 breaks every package built on openssl 3 until those packages
+are upgraded in the same transaction. No kernel or boot-chain update is pending either.
+The commands below are kept for future rounds where the core *can* move alone. Always
+dry-run them first with `pacman -S --needed --print ...`.
 
 ```bash
 sudo pacman -S --needed systemd systemd-libs systemd-resolvconf systemd-sysvcompat \
@@ -157,6 +167,10 @@ What it does: prunes the pacman cache, takes a snapshot, pulls the Omarchy check
 `pacman -Syu --ignore hyprland`, then AUR updates. If the rebase hits a conflict, stop. Run
 `git -C ~/.local/share/omarchy status` and resolve it by hand. Don't force anything.
 
+This round it also carries the core system (systemd, dbus, openssl 4, pacman, qt6-base),
+so **reboot afterwards** and run Stage 2's after-reboot checks too (`systemctl --failed`,
+`curl`, `ssh -T git@github.com`, `sudo true`).
+
 **Done check:**
 
 - `checkupdates | wc -l` is 0, or only `hyprland*` is left
@@ -184,6 +198,7 @@ Append one line per event: date, stage, outcome. Newest last.
 
 - 2026-11-19: Surveyed state (230 repo, 3 AUR). Snapshot **#40** created. Stage 0 ✅
 - 2026-11-19: Plan written. Next: Stage 1
+- 2026-11-19: Keyrings already current. Dry runs: Stage 1 clean (3 pkgs). Stage 2 impossible on its own (openssl 4 soname bump). Folded into Stage 3. Nothing installed yet.
 
 ## Follow-ups (after the update)
 
