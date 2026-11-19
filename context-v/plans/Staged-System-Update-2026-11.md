@@ -200,10 +200,14 @@ Append one line per event: date, stage, outcome. Newest last.
 - 2026-11-19: Plan written. Next: Stage 1
 - 2026-11-19: Keyrings already current. Dry runs: Stage 1 clean (3 pkgs). Stage 2 impossible on its own (openssl 4 soname bump). Folded into Stage 3. Nothing installed yet.
 - 2026-11-19: Stage 1 ✅ mesa, vulkan-asahi, vulkan-mesa-implicit-layers → 26.3.1-1. (A `!` pacman run in Claude Code cannot answer the Y/n prompt; it aborted harmlessly.) Next: Stage 3 (`omarchy-update`) in a real terminal.
+- 2026-11-19: Stage 3 run 1 ✗ — `omarchy-update` rebased the Omarchy checkout fine (HEAD `f137d732c`, 3 local fixes on top), but pacman aborted at download: srt, solid, purpose stalled on the single geo-redirected `mirror.archlinuxarm.org`. **Nothing installed** (systemd/openssl unchanged). 116 pkgs cached. Fix: `/etc/pacman.d/mirrorlist` now lists nj/fl/ca US mirrors + global + de as fallbacks (original at `mirrorlist.bak.20261119`). Transaction also showed `openssl-3` compat pkg and `omarchy/hyprland 0.57.2-2` coming in — both expected. Next: rerun `omarchy-update`.
+- 2026-11-19: Noted: "Omarchy 4.5" notice = official Omarchy for Apple Silicon (installer app, Asahi-based engine). Not reachable via pacman; needs backup + reinstall. See Follow-ups.
 
 ## Follow-ups (after the update)
 
 - Rewrite the README's *Oct 2026: Qt 6.12* section. The local fix now lives as commits
   and `omarchy-update` rebases them, so the one-liner workaround is obsolete.
 - Commit the pending `hypr/.config/hypr/bindings.lua` change (unbinds Super+Alt+S for Zen).
+- **Evaluate moving to Omarchy for Apple Silicon (4.5).** The script install this Mac uses is now "legacy". The new install is a macOS app (`brew install omacom/mac/omarchy`, repo `omacom/omarchy-mac-installer`), still Asahi underneath, and adds USB-C external monitors, Touch ID and bootable snapshots on the M2 Air. No in-place upgrade: back up, remove, reinstall, restore. Deserves its own plan.
+- Consider committing the pacman mirrorlist change to this repo's docs (README *Keeping it alive*).
 - Once complete: set `status: Shipped`, `date_work_completed`, `date_first_published`.
