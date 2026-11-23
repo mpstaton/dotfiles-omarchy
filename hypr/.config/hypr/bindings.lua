@@ -27,3 +27,7 @@
 -- o.bind("SUPER + SHIFT + S", nil, "omarchy-capture-screenshot")
 -- o.bind("SUPER + H", nil, "voxtype record toggle")
 -- o.bind("SUPER + PERIOD", nil, "omarchy-shell shell toggle omarchy.emojis")
+
+-- Let Zen Browser receive SUPER+ALT+S (toggle its UI) instead of moving the window to the scratchpad.
+-- SUPER+SHIFT+grave still moves a window to the scratchpad.
+hl.unbind("SUPER + ALT + S")
